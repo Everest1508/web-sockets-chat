@@ -1,0 +1,45 @@
+<!-- chat/templates/chat/room.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room - {{ room_name }}</title>
+</head>
+<body>
+    <h1>Chat Room - {{ room_name }}</h1>
+    <div id="chat-log"></div>
+    <input type="text" id="chat-message-input">
+    <button id="chat-message-submit">Send</button>
+    
+    <script>
+        // Establish WebSocket connection
+        const roomName = "{{ room_name }}";
+        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+        const chatSocket = new WebSocket(
+            wsScheme+'://' + window.location.host +
+            '/ws/chat/' + roomName + '/'
+        );
+
+        // Handle incoming messages
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            document.querySelector('#chat-log').innerHTML += '<p>' + data.message + '</p>';
+        };
+
+        // Handle sending messages
+        document.querySelector('#chat-message-submit').onclick = function(e) {
+            const messageInputDom = document.querySelector('#chat-message-input');
+            const message = messageInputDom.value;
+            chatSocket.send(JSON.stringify({
+                'message': message
+            }));
+            messageInputDom.value = ''; // Clear input field after sending
+        };
+
+        // Close WebSocket connection when leaving the page
+        window.onbeforeunload = function() {
+            chatSocket.close();
+        };
+    </script>
+</body>
+</html>
