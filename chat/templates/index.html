@@ -1,45 +1,269 @@
-<!-- chat/templates/chat/room.html -->
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chat Room - {{ room_name }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+        .user-list {
+            flex: 1;
+            border-right: 1px solid #2e2e2e;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .chat-container {
+            flex: 3;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-log {
+            flex: 1;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .message {
+            max-width: 70%;
+            padding: 10px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .user-message {
+            align-self: flex-end;
+            background-color: #007bff;
+        }
+        .other-message {
+            align-self: flex-start;
+            background-color: #2e2e2e;
+        }
+        .message p {
+            margin: 0;
+            color: #fff;
+        }
+        .sender {
+            {% comment %} font-weight: bold; {% endcomment %}
+            margin-bottom: 5px;
+        }
+        .message-input-container {
+            display: flex;
+            align-items: center;
+        }
+        #chat-message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #2e2e2e;
+            border-radius: 5px 0 0 5px;
+            font-size: 16px;
+            outline: none;
+            background-color: #2e2e2e;
+            color: #fff;
+        }
+        #chat-message-submit {
+            padding: 10px 20px;
+            border: none;
+            background-color: #007bff;
+            color: #fff;
+            border-radius: 0 5px 5px 0;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #chat-message-submit:hover {
+            background-color: #0056b3;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .modal-content {
+            background-color: #2e2e2e;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+            max-width: 400px;
+            width: 80%;
+            text-align: center;
+        }
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: #fff;
+            text-decoration: none;
+        }
+        h2 {
+            margin-top: 0;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            background-color: #333;
+            color: #fff;
+        }
+        button {
+            background-color: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+
+    </style>
 </head>
 <body>
-    <h1>Chat Room - {{ room_name }}</h1>
-    <div id="chat-log"></div>
-    <input type="text" id="chat-message-input">
-    <button id="chat-message-submit">Send</button>
+    <div id="myModal" class="modal">
+    <div class="modal-content">
+        <span class="close">&times;</span>
+        <h2>Enter Your Name</h2>
+        <input type="text" id="name-input" placeholder="Your Name">
+        <button id="name-submit">Submit</button>
+    </div>
+</div>
+    <div class="user-list">
+        <!-- List of users present in the chat will be displayed here -->
+    </div>
+    <div class="chat-container">
+        <div class="chat-log" id="chat-log"></div>
+        <div class="message-input-container">
+            <input type="text" id="chat-message-input" placeholder="Type your message...">
+            <button id="chat-message-submit">Send</button>
+        </div>
+    </div>
     
     <script>
-        // Establish WebSocket connection
-        const roomName = "{{ room_name }}";
-        const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
-        const chatSocket = new WebSocket(
-            wsScheme+'://' + window.location.host +
-            '/ws/chat/' + roomName + '/'
-        );
 
-        // Handle incoming messages
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            document.querySelector('#chat-log').innerHTML += '<p>' + data.message + '</p>';
-        };
+        let userName = null;
+        const modal = document.getElementById('myModal');
 
-        // Handle sending messages
-        document.querySelector('#chat-message-submit').onclick = function(e) {
+        // Get the close button
+        const closeBtn = document.querySelector('.close');
+
+        // Function to open the modal
+        function openModal() {
+            modal.style.display = 'block';
+        }
+
+        // Function to close the modal
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        // Event listener to close the modal if close button is clicked
+        closeBtn.addEventListener('click', closeModal);
+
+        // Function to handle submitting the name
+        function submitName() {
+            const nameInput = document.getElementById('name-input').value.trim();
+            if (nameInput !== '') {
+                userName = nameInput;
+                console.log(userName);
+                closeModal();
+            }
+        }
+
+        document.getElementById('name-submit').addEventListener('click', submitName);
+
+        window.onload = openModal;
+
+
+        // Function to send messages
+        function sendMessage() {
             const messageInputDom = document.querySelector('#chat-message-input');
-            const message = messageInputDom.value;
-            chatSocket.send(JSON.stringify({
-                'message': message
-            }));
-            messageInputDom.value = ''; // Clear input field after sending
-        };
+            const message = messageInputDom.value.trim();
+            if (message !== '') {
+                console.log(userName);
+                chatSocket.send(JSON.stringify({
+                    'sender': userName,
+                    'message': message
+                }));
+                messageInputDom.value = ''; 
+            }
+        }
 
-        // Close WebSocket connection when leaving the page
-        window.onbeforeunload = function() {
-            chatSocket.close();
-        };
+        // Event listener for the message submit button
+        document.querySelector('#chat-message-submit').onclick = sendMessage;
+
+        // Event listener for pressing enter key in the message input field
+        document.querySelector('#chat-message-input').addEventListener('keydown', function(event) {
+            if (event.keyCode === 13) { // Enter key
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Function to handle WebSocket messages
+        function handleWebSocketMessage(event) {
+            const data = JSON.parse(event.data);
+            console.log(data);
+            const chatLog = document.querySelector('#chat-log');
+            const messageContainer = document.createElement('div');
+            messageContainer.classList.add('message');
+            messageContainer.classList.add('other-message');
+            const senderElement = document.createElement('div');
+            senderElement.classList.add('sender');
+            senderElement.textContent = '~'+data.sender;
+            messageContainer.appendChild(senderElement);
+            const messageElement = document.createElement('p');
+            messageElement.textContent = data.message;
+            messageContainer.appendChild(messageElement);
+            chatLog.appendChild(messageContainer);
+            chatLog.scrollTop = chatLog.scrollHeight;
+        }
+
+        // Function to handle WebSocket connection
+        function setupWebSocketConnection() {
+            const roomName = "{{ room_name }}";
+            const wsScheme = window.location.protocol === "https:" ? "wss" : "ws";
+            const chatSocket = new WebSocket(
+                `${wsScheme}://${window.location.host}/ws/chat/${roomName}/`
+            );
+            chatSocket.onmessage = handleWebSocketMessage;
+            chatSocket.onclose = function(event) {
+                console.error('Chat socket closed unexpectedly:', event);
+            };
+            return chatSocket;
+        }
+
+        // Event listener for setting up WebSocket connection after entering the name
+        document.querySelector('#name-input').addEventListener('change', function(event) {
+            if (event.target.value.trim() !== '') {
+                userName = event.target.value.trim();
+                event.target.disabled = true; // Disable the name input field after setting the name
+                chatSocket = setupWebSocketConnection();
+            }
+        });
     </script>
 </body>
 </html>
