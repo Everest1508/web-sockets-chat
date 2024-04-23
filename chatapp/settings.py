@@ -81,12 +81,8 @@ ASGI_APPLICATION = 'chatapp.asgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'railway',
-        'USER': 'postgres',
-        'PASSWORD': 'qAvcyHPOAIXUXYHKzfOHiIeNrvQTHJpA',
-        'HOST': 'monorail.proxy.rlwy.net',
-        'PORT': '55032',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / "db.sqlite3",
     }
 }
 
